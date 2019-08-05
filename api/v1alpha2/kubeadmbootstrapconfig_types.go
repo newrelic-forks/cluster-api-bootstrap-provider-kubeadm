@@ -29,10 +29,10 @@ type KubeadmConfigSpec struct {
 	ClusterConfiguration *kubeadmv1beta1.ClusterConfiguration `json:"clusterConfiguration,omitempty"`
 	// InitConfiguration along with ClusterConfiguration are the configurations necessary for the init command
 	// +optional
-	InitConfiguration    *kubeadmv1beta1.InitConfiguration    `json:"initConfiguration,omitempty"`
+	InitConfiguration *kubeadmv1beta1.InitConfiguration `json:"initConfiguration,omitempty"`
 	// JoinConfiguration is the kubeadm configuration for the join command
 	// +optional
-	JoinConfiguration    *kubeadmv1beta1.JoinConfiguration    `json:"joinConfiguration,omitempty"`
+	JoinConfiguration *kubeadmv1beta1.JoinConfiguration `json:"joinConfiguration,omitempty"`
 }
 
 // KubeadmConfigStatus defines the observed state of KubeadmConfig

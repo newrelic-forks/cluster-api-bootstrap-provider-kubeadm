@@ -38,6 +38,18 @@ var (
 	machineKind = v1alpha2.SchemeGroupVersion.WithKind("Machine")
 )
 
+// Key names in the cluster certificates Secret for the various certs
+const (
+	clusterCAKey             = "cluster-ca-key"
+	clusterCACertificate     = "cluster-ca-cert"
+	etcdCAKey                = "etcd-ca-key"
+	etcdCACertificate        = "etcd-ca-cert"
+	frontProxyCAKey          = "front-proxy-ca-key"
+	frontProxyCACertificate  = "front-proxy-ca-cert"
+	serviceAccountPublicKey  = "service-account-public-key"
+	serviceAccountPrivateKey = "service-account-private-key"
+)
+
 const (
 	// InfrastructureReadyAnnotationKey identifies when the infrastructure is ready for use such as joining new nodes.
 	// TODO move this into cluster-api to be imported by providers
@@ -47,7 +59,7 @@ const (
 // KubeadmConfigReconciler reconciles a KubeadmConfig object
 type KubeadmConfigReconciler struct {
 	client.Client
-	Log                    logr.Logger
+	Log logr.Logger
 }
 
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,verbs=get;list;watch;create;update;patch;delete
@@ -136,8 +148,10 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			return ctrl.Result{}, err
 		}
 
-		cloudInitData, err :=cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
-			InitConfiguration: initdata,
+		// if a user is providing their own certificates we should find them at the following locations. If they're not, we'll generate them.
+
+		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
+			InitConfiguration:    initdata,
 			ClusterConfiguration: clusterdata,
 		})
 		if err != nil {
@@ -179,7 +193,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		joinData, err := cloudinit.NewJoinControlPlane(&cloudinit.ControlPlaneJoinInput{
 			// TODO do a len check or something here
 			ControlPlaneAddress: fmt.Sprintf("https://%s:%d", cluster.Status.APIEndpoints[0].Host, cluster.Status.APIEndpoints[0].Port),
-			JoinConfiguration: joinBytes,
+			JoinConfiguration:   joinBytes,
 		})
 		if err != nil {
 			log.Error(err, "failed to create a control plane join configuration")
