@@ -150,18 +150,45 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			return ctrl.Result{}, err
 		}
 
-		// if a user is providing their own certificates we should find them at the following locations. If they're not, we'll generate them.
+		// attempt to locate user-provided certificates
 		secretName := fmt.Sprintf("%s-certs", config.Spec.ClusterConfiguration.ClusterName)
 		secret := &corev1.Secret{}
 		if err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: req.Namespace}, secret); err != nil {
-
+			// generate new certificates
 			if apierrors.IsNotFound(err) {
-				secret := 
+				certs, err := NewCertificates()
+				if err != nil {
+					log.Error(err, "failed to generate certs")
+					return ctrl.Result{}, err
+				}
+
+				secret.ObjectMeta.Name = secretName
+				secret.ObjectMeta.Namespace = req.Namespace
+				// TODO: helper function to convert between Secret and Certificate
+				secret.Data = map[string][]byte{
+					clusterCAKey:             certs.ClusterCA.Key,
+					clusterCACertificate:     certs.ClusterCA.Cert,
+					etcdCAKey:                certs.EtcdCA.Key,
+					etcdCACertificate:        certs.EtcdCA.Cert,
+					frontProxyCAKey:          certs.FrontProxyCA.Key,
+					frontProxyCACertificate:  certs.FrontProxyCA.Cert,
+					serviceAccountPublicKey:  certs.ServiceAccount.Key,
+					serviceAccountPrivateKey: certs.ServiceAccount.Cert,
+				}
+
 				err = r.Create(ctx, secret)
+				if err != nil {
+					log.Error(err, "failed to create secret")
+					return ctrl.Result{}, err
+				}
+			} else {
+				log.Error(err, "failed to look up existing secret")
+				return ctrl.Result{}, err
 			}
 		}
 
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
+			// TODO: pass certs to control plane
 			Certificates:         cloudinit.Certificates{},
 			InitConfiguration:    string(initdata),
 			ClusterConfiguration: string(clusterdata),
