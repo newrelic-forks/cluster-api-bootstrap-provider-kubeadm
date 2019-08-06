@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -149,7 +151,14 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		}
 
 		// if a user is providing their own certificates we should find them at the following locations. If they're not, we'll generate them.
+		secretName := fmt.Sprintf("%s-certs", config.Spec.ClusterConfiguration.ClusterName)
+		secret := &corev1.Secret{}
+		if err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: req.Namespace}, secret); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
+			Certificates:         cloudinit.Certificates{},
 			InitConfiguration:    string(initdata),
 			ClusterConfiguration: string(clusterdata),
 		})
