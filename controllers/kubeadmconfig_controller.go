@@ -38,6 +38,18 @@ var (
 	machineKind = v1alpha2.SchemeGroupVersion.WithKind("Machine")
 )
 
+// Key names in the cluster certificates Secret for the various certs
+const (
+	clusterCAKey             = "cluster-ca-key"
+	clusterCACertificate     = "cluster-ca-cert"
+	etcdCAKey                = "etcd-ca-key"
+	etcdCACertificate        = "etcd-ca-cert"
+	frontProxyCAKey          = "front-proxy-ca-key"
+	frontProxyCACertificate  = "front-proxy-ca-cert"
+	serviceAccountPublicKey  = "service-account-public-key"
+	serviceAccountPrivateKey = "service-account-private-key"
+)
+
 const (
 	// InfrastructureReadyAnnotationKey identifies when the infrastructure is ready for use such as joining new nodes.
 	// TODO move this into cluster-api to be imported by providers
@@ -136,6 +148,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			return ctrl.Result{}, err
 		}
 
+		// if a user is providing their own certificates we should find them at the following locations. If they're not, we'll generate them.
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
 			InitConfiguration:    string(initdata),
 			ClusterConfiguration: string(clusterdata),
