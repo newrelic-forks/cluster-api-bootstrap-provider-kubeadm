@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	kubeadmv1alpha2 "sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/cloudinit"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha2"
@@ -154,7 +154,11 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		secretName := fmt.Sprintf("%s-certs", config.Spec.ClusterConfiguration.ClusterName)
 		secret := &corev1.Secret{}
 		if err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: req.Namespace}, secret); err != nil {
-			return ctrl.Result{}, err
+
+			if apierrors.IsNotFound(err) {
+				secret := 
+				err = r.Create(ctx, secret)
+			}
 		}
 
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
