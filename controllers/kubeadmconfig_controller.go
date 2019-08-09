@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cabpkv1alpha2 "sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/api/v1alpha2"
-	"sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/cloudinit"
 	"sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/certs"
+	"sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/cloudinit"
 	kubeadmv1beta1 "sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/kubeadm/v1beta1"
 )
 
@@ -176,7 +176,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 		}
 
 		//TODO(fp) Implement the expected flow for certificates
-		certificates, _ := r.getCertificates()
+		certificates, _ := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName)
 
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
 			BaseUserData: cloudinit.BaseUserData{
@@ -184,7 +184,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 			},
 			InitConfiguration:    string(initdata),
 			ClusterConfiguration: string(clusterdata),
-			Certificates:         certificates,
+			Certificates:         *certificates,
 		})
 		if err != nil {
 			log.Error(err, "failed to generate cloud init for bootstrap control plane")
@@ -230,11 +230,11 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 		}
 
 		//TODO(fp) Implement the expected flow for certificates
-		certificates, _ := r.getCertificates()
+		certificates, _ := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName)
 
 		joinData, err := cloudinit.NewJoinControlPlane(&cloudinit.ControlPlaneJoinInput{
 			JoinConfiguration: string(joinBytes),
-			Certificates:      certificates,
+			Certificates:      *certificates,
 			BaseUserData: cloudinit.BaseUserData{
 				AdditionalFiles: config.Spec.AdditionalUserDataFiles,
 			},
@@ -264,20 +264,8 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 	return ctrl.Result{}, nil
 }
 
-func (r *KubeadmConfigReconciler) getCertificates() (cloudinit.Certificates, error) {
-	//TODO(fp) check what is the expected flow for certificates
-	certificates, _ := certs.NewCertificates()
-
-	return cloudinit.Certificates{
-		CACert:           string(certificates.ClusterCA.Cert),
-		CAKey:            string(certificates.ClusterCA.Key),
-		EtcdCACert:       string(certificates.EtcdCA.Cert),
-		EtcdCAKey:        string(certificates.EtcdCA.Key),
-		FrontProxyCACert: string(certificates.FrontProxyCA.Cert),
-		FrontProxyCAKey:  string(certificates.FrontProxyCA.Key),
-		SaCert:           string(certificates.ServiceAccount.Cert),
-		SaKey:            string(certificates.ServiceAccount.Key),
-	}, nil
+func (r *KubeadmConfigReconciler) getClusterCertificates(clusterName string) (*certs.Certificates, error) {
+	return certs.NewCertificates()
 }
 
 // SetupWithManager TODO
