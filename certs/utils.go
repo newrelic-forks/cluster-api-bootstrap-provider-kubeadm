@@ -28,9 +28,51 @@ const (
 )
 
 func CertificatesToMap(c *Certificates) map[string]string {
+	return map[string]string{
+		clusterCAKey:             string(c.ClusterCA.Key),
+		clusterCACertificate:     string(c.ClusterCA.Cert),
+		etcdCAKey:                string(c.EtcdCA.Key),
+		etcdCACertificate:        string(c.EtcdCA.Cert),
+		frontProxyCAKey:          string(c.FrontProxyCA.Key),
+		frontProxyCACertificate:  string(c.FrontProxyCA.Cert),
+		serviceAccountPublicKey:  string(c.ServiceAccount.Key),
+		serviceAccountPrivateKey: string(c.ServiceAccount.Cert),
+	}
 
 }
 
-func MapToCertificates(map[string]string) *Certificates {
+func MapToCertificates(m map[string]string) *Certificates {
+	certs := &Certificates{
+		ClusterCA:      &KeyPair{},
+		EtcdCA:         &KeyPair{},
+		FrontProxyCA:   &KeyPair{},
+		ServiceAccount: &KeyPair{},
+	}
 
+	if val, ok := m[clusterCAKey]; ok {
+		certs.ClusterCA.Key = []byte(val)
+	}
+	if val, ok := m[clusterCACertificate]; ok {
+		certs.ClusterCA.Cert = []byte(val)
+	}
+	if val, ok := m[etcdCAKey]; ok {
+		certs.EtcdCA.Key = []byte(val)
+	}
+	if val, ok := m[etcdCACertificate]; ok {
+		certs.EtcdCA.Cert = []byte(val)
+	}
+	if val, ok := m[frontProxyCAKey]; ok {
+		certs.FrontProxyCA.Key = []byte(val)
+	}
+	if val, ok := m[frontProxyCACertificate]; ok {
+		certs.FrontProxyCA.Cert = []byte(val)
+	}
+	if val, ok := m[serviceAccountPrivateKey]; ok {
+		certs.ServiceAccount.Key = []byte(val)
+	}
+	if val, ok := m[serviceAccountPublicKey]; ok {
+		certs.ServiceAccount.Cert = []byte(val)
+	}
+
+	return certs
 }
