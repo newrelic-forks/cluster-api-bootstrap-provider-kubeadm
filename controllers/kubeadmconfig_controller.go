@@ -32,6 +32,7 @@ import (
 
 	cabpkv1alpha2 "sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/cloudinit"
+	"sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/certs"
 	kubeadmv1beta1 "sigs.k8s.io/cluster-api-bootstrap-provider-kubeadm/kubeadm/v1beta1"
 )
 
@@ -265,7 +266,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 
 func (r *KubeadmConfigReconciler) getCertificates() (cloudinit.Certificates, error) {
 	//TODO(fp) check what is the expected flow for certificates
-	certificates, _ := NewCertificates()
+	certificates, _ := certs.NewCertificates()
 
 	return cloudinit.Certificates{
 		CACert:           string(certificates.ClusterCA.Cert),
