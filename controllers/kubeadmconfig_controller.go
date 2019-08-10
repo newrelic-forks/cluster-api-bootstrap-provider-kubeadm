@@ -178,7 +178,19 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 		}
 
 		//TODO(fp) Implement the expected flow for certificates
-		certificates, _ := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+		certificates, err := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				log.Error(err, "unable to lookup cluster certificates")
+				return ctrl.Result{}, err
+			} else {
+				certificates, err = r.createClusterCertificates(config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+				if err != nil {
+					log.Error(err, "unable to create cluster certificates")
+					return ctrl.Result{}, err
+				}
+			}
+		}
 
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
 			BaseUserData: cloudinit.BaseUserData{
@@ -279,6 +291,27 @@ func (r *KubeadmConfigReconciler) getClusterCertificates(clusterName, namespace 
 	}
 
 	return certs.MapToCertificates(secret.StringData), nil
+}
+
+func (r *KubeadmConfigReconciler) createClusterCertificates(clusterName, namespace string) (*certs.Certificates, error) {
+	certificates, err := certs.NewCertificates()
+	if err != nil {
+		return nil, err
+	}
+
+	secret := &corev1.Secret{}
+	secretName := fmt.Sprintf("%s-certs", clusterName)
+
+	secret.ObjectMeta.Name = secretName
+	secret.ObjectMeta.Namespace = namespace
+	secret.StringData = certs.CertificatesToMap(certificates)
+
+	err = r.Create(context.Background(), secret)
+	if err != nil {
+		return nil, err
+	}
+
+	return certificates, nil
 }
 
 // SetupWithManager TODO
