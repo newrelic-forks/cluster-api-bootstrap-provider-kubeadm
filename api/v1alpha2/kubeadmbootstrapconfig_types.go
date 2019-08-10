@@ -49,6 +49,7 @@ type KubeadmConfigStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // KubeadmConfig is the Schema for the kubeadmconfigs API
 type KubeadmConfig struct {
