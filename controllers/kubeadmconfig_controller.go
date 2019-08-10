@@ -23,8 +23,10 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	capiv1alpha2 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha2"
 	"sigs.k8s.io/cluster-api/pkg/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -176,7 +178,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 		}
 
 		//TODO(fp) Implement the expected flow for certificates
-		certificates, _ := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName)
+		certificates, _ := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
 
 		cloudInitData, err := cloudinit.NewInitControlPlane(&cloudinit.ControlPlaneInput{
 			BaseUserData: cloudinit.BaseUserData{
@@ -229,8 +231,11 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 			return ctrl.Result{}, errors.New("Machine is a ControlPlane, but JoinConfiguration.ControlPlane is not set in the KubeadmConfig object")
 		}
 
-		//TODO(fp) Implement the expected flow for certificates
-		certificates, _ := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName)
+		certificates, err := r.getClusterCertificates(config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+		if err != nil {
+			log.Error(err, "unable to locate cluster certificates")
+			return ctrl.Result{}, err
+		}
 
 		joinData, err := cloudinit.NewJoinControlPlane(&cloudinit.ControlPlaneJoinInput{
 			JoinConfiguration: string(joinBytes),
@@ -264,8 +269,16 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 	return ctrl.Result{}, nil
 }
 
-func (r *KubeadmConfigReconciler) getClusterCertificates(clusterName string) (*certs.Certificates, error) {
-	return certs.NewCertificates()
+func (r *KubeadmConfigReconciler) getClusterCertificates(clusterName, namespace string) (*certs.Certificates, error) {
+	secretName := fmt.Sprintf("%s-certs", clusterName)
+	secret := &corev1.Secret{}
+
+	err := r.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
+	if err != nil {
+		return nil, err
+	}
+
+	return certs.MapToCertificates(secret.StringData), nil
 }
 
 // SetupWithManager TODO
