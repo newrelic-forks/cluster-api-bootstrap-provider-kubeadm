@@ -178,10 +178,10 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 			return ctrl.Result{}, err
 		}
 
-		certificates, err := r.getClusterCertificates(ctx, config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+		certificates, err := r.getClusterCertificates(ctx, config)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				certificates, err = r.createClusterCertificates(ctx, config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+				certificates, err = r.createClusterCertificates(ctx, config)
 				if err != nil {
 					log.Error(err, "unable to create cluster certificates")
 					return ctrl.Result{}, err
@@ -243,7 +243,7 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 			return ctrl.Result{}, errors.New("Machine is a ControlPlane, but JoinConfiguration.ControlPlane is not set in the KubeadmConfig object")
 		}
 
-		certificates, err := r.getClusterCertificates(ctx, config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
+		certificates, err := r.getClusterCertificates(ctx, config)
 		if err != nil {
 			log.Error(err, "unable to locate cluster certificates")
 			return ctrl.Result{}, err
@@ -281,11 +281,10 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 	return ctrl.Result{}, nil
 }
 
-func (r *KubeadmConfigReconciler) getClusterCertificates(ctx context.Context, clusterName, namespace string) (*certs.Certificates, error) {
-	secretName := fmt.Sprintf("%s-certs", clusterName)
+func (r *KubeadmConfigReconciler) getClusterCertificates(ctx context.Context, config *cabpkv1alpha2.KubeadmConfig) (*certs.Certificates, error) {
 	secret := &corev1.Secret{}
 
-	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
+	err := r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-certs", config.GetName()), Namespace: config.GetNamespace()}, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -293,18 +292,27 @@ func (r *KubeadmConfigReconciler) getClusterCertificates(ctx context.Context, cl
 	return certs.MapToCertificates(secret.StringData), nil
 }
 
-func (r *KubeadmConfigReconciler) createClusterCertificates(ctx context.Context, clusterName, namespace string) (*certs.Certificates, error) {
+func (r *KubeadmConfigReconciler) createClusterCertificates(ctx context.Context, config *cabpkv1alpha2.KubeadmConfig) (*certs.Certificates, error) {
 	certificates, err := certs.NewCertificates()
 	if err != nil {
 		return nil, err
 	}
 
-	secret := &corev1.Secret{}
-	secretName := fmt.Sprintf("%s-certs", clusterName)
-
-	secret.ObjectMeta.Name = secretName
-	secret.ObjectMeta.Namespace = namespace
-	secret.StringData = certs.CertificatesToMap(certificates)
+	secret := &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-certs", config.GetName()),
+			Namespace: config.GetNamespace(),
+			OwnerReferences: []v1.OwnerReference{
+				{
+					APIVersion: cabpkv1alpha2.GroupVersion.String(),
+					Kind:       "KubeadmConfig",
+					Name:       config.GetName(),
+					UID:        config.GetUID(),
+				},
+			},
+		},
+		StringData: certs.CertificatesToMap(certificates),
+	}
 
 	err = r.Create(ctx, secret)
 	if err != nil {
