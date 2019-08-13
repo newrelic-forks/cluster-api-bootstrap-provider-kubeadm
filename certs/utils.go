@@ -35,8 +35,8 @@ func CertificatesToMap(c *Certificates) map[string]string {
 		etcdCACertificate:        string(c.EtcdCA.Cert),
 		frontProxyCAKey:          string(c.FrontProxyCA.Key),
 		frontProxyCACertificate:  string(c.FrontProxyCA.Cert),
-		serviceAccountPublicKey:  string(c.ServiceAccount.Key),
-		serviceAccountPrivateKey: string(c.ServiceAccount.Cert),
+		serviceAccountPrivateKey: string(c.ServiceAccount.Key),
+		serviceAccountPublicKey:  string(c.ServiceAccount.Cert),
 	}
 
 }
