@@ -178,18 +178,17 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 			return ctrl.Result{}, err
 		}
 
-		//TODO(fp) Implement the expected flow for certificates
 		certificates, err := r.getClusterCertificates(ctx, config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
 		if err != nil {
-			if !apierrors.IsNotFound(err) {
-				log.Error(err, "unable to lookup cluster certificates")
-				return ctrl.Result{}, err
-			} else {
+			if apierrors.IsNotFound(err) {
 				certificates, err = r.createClusterCertificates(ctx, config.Spec.ClusterConfiguration.ClusterName, req.Namespace)
 				if err != nil {
 					log.Error(err, "unable to create cluster certificates")
 					return ctrl.Result{}, err
 				}
+			} else {
+				log.Error(err, "unable to lookup cluster certificates")
+				return ctrl.Result{}, err
 			}
 		}
 
