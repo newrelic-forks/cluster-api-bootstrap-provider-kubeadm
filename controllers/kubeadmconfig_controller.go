@@ -281,6 +281,13 @@ func (r *KubeadmConfigReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, re
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager TODO
+func (r *KubeadmConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cabpkv1alpha2.KubeadmConfig{}).
+		Complete(r)
+}
+
 func (r *KubeadmConfigReconciler) getClusterCertificates(ctx context.Context, config *cabpkv1alpha2.KubeadmConfig) (*certs.Certificates, error) {
 	secret := &corev1.Secret{}
 
@@ -320,13 +327,6 @@ func (r *KubeadmConfigReconciler) createClusterCertificates(ctx context.Context,
 	}
 
 	return certificates, nil
-}
-
-// SetupWithManager TODO
-func (r *KubeadmConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cabpkv1alpha2.KubeadmConfig{}).
-		Complete(r)
 }
 
 func (r *KubeadmConfigReconciler) patchConfig(ctx context.Context, config *cabpkv1alpha2.KubeadmConfig, patchConfig client.Patch) error {
