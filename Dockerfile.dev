@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Build the manager binary
-FROM golang:1.12.7
+FROM golang:1.20.7
 
 # default the go proxy
 ARG goproxy=https://proxy.golang.org
